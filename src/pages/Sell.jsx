@@ -3,10 +3,10 @@ import { Plus, Upload, ArrowLeft, CheckCircle, Trash2 } from "lucide-react";
 import API from "../api/api";
 
 export default function Sell({ user, setCurrentPage }) {
-  const [form, setForm] = useState({ 
-    name: "", 
-    price: "", 
-    image: "" 
+  const [form, setForm] = useState({
+    name: "",
+    price: "",
+    image: ""
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -23,8 +23,22 @@ export default function Sell({ user, setCurrentPage }) {
   const fetchUserProducts = async () => {
     try {
       setLoading(true);
-      const response = await API.get(`/products/user/${user.id}`);
-      setUserProducts(response.data || []);
+
+      // Try the new endpoint
+      try {
+        const response = await API.get(`/products/user/${user.id}`);
+        setUserProducts(response.data || []);
+      } catch (error) {
+        console.log("Specific user endpoint failed, trying fallback...");
+
+        // Fallback: Get all products and filter
+        const allResponse = await API.get("/products/all");
+        const filteredProducts = allResponse.data.filter(
+          product => product.user_id == user.id // Note: == not === because user.id might be string/number mismatch
+        );
+        setUserProducts(filteredProducts || []);
+      }
+
     } catch (error) {
       console.error("Error fetching user products:", error);
       setUserProducts([]);
@@ -37,13 +51,22 @@ export default function Sell({ user, setCurrentPage }) {
     if (!window.confirm("Are you sure you want to delete this product?")) {
       return;
     }
-    
+
     try {
-      await API.delete(`/products/${productId}`);
+      await API.delete(`/products/${productId}`, {
+        data: { userId: user.id }  // Add userId in request body
+      });
       setUserProducts(userProducts.filter(product => product.id !== productId));
     } catch (error) {
       console.error("Error deleting product:", error);
-      alert("Failed to delete product");
+
+      // Fallback: Remove from frontend state even if backend fails
+      if (error.response?.status === 404 || error.response?.status === 500) {
+        alert("Backend delete failed, removing from view only");
+        setUserProducts(userProducts.filter(product => product.id !== productId));
+      } else {
+        alert("Failed to delete product");
+      }
     }
   };
 
@@ -56,8 +79,8 @@ export default function Sell({ user, setCurrentPage }) {
           </div>
           <h2 className="text-2xl font-bold text-gray-800 mb-3">Login Required</h2>
           <p className="text-gray-600 mb-6">Please login to list your products for sale</p>
-          <button 
-            onClick={() => setCurrentPage("login")} 
+          <button
+            onClick={() => setCurrentPage("login")}
             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors w-full"
           >
             Go to Login
@@ -68,25 +91,25 @@ export default function Sell({ user, setCurrentPage }) {
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     if (!form.name.trim()) {
       newErrors.name = "Product name is required";
     } else if (form.name.trim().length < 2) {
       newErrors.name = "Product name must be at least 2 characters";
     }
-    
+
     if (!form.price) {
       newErrors.price = "Price is required";
     } else if (parseFloat(form.price) <= 0) {
       newErrors.price = "Price must be greater than 0";
     }
-    
+
     if (!form.image.trim()) {
       newErrors.image = "Image URL is required";
     } else if (!isValidUrl(form.image)) {
       newErrors.image = "Please enter a valid image URL";
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -109,7 +132,7 @@ export default function Sell({ user, setCurrentPage }) {
 
   const submit = async () => {
     if (!validateForm()) return;
-    
+
     setIsSubmitting(true);
     try {
       await API.post("/products/add", { user_id: user.id, ...form });
@@ -135,7 +158,7 @@ export default function Sell({ user, setCurrentPage }) {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex items-center mb-8">
-          <button 
+          <button
             onClick={handleGoBack}
             className="flex items-center text-gray-600 hover:text-gray-800 transition-colors mr-4"
           >
@@ -174,14 +197,13 @@ export default function Sell({ user, setCurrentPage }) {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Product Name *
                   </label>
-                  <input 
-                    name="name" 
+                  <input
+                    name="name"
                     placeholder="e.g., Vintage Camera, Designer Handbag..."
                     value={form.name}
                     onChange={(e) => handleInputChange("name", e.target.value)}
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all ${
-                      errors.name ? "border-red-500" : "border-gray-300"
-                    }`}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all ${errors.name ? "border-red-500" : "border-gray-300"
+                      }`}
                   />
                   {errors.name && (
                     <p className="text-red-500 text-sm mt-1">{errors.name}</p>
@@ -195,15 +217,14 @@ export default function Sell({ user, setCurrentPage }) {
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
-                    <input 
-                      name="price" 
-                      type="number" 
+                    <input
+                      name="price"
+                      type="number"
                       placeholder="0.00"
                       value={form.price}
                       onChange={(e) => handleInputChange("price", e.target.value)}
-                      className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all ${
-                        errors.price ? "border-red-500" : "border-gray-300"
-                      }`}
+                      className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all ${errors.price ? "border-red-500" : "border-gray-300"
+                        }`}
                       min="0"
                       step="0.01"
                     />
@@ -222,14 +243,13 @@ export default function Sell({ user, setCurrentPage }) {
                     <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
                       <Upload size={18} />
                     </span>
-                    <input 
-                      name="image" 
+                    <input
+                      name="image"
                       placeholder="https://example.com/image.jpg"
                       value={form.image}
                       onChange={(e) => handleInputChange("image", e.target.value)}
-                      className={`w-full pl-12 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all ${
-                        errors.image ? "border-red-500" : "border-gray-300"
-                      }`}
+                      className={`w-full pl-12 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all ${errors.image ? "border-red-500" : "border-gray-300"
+                        }`}
                     />
                   </div>
                   {errors.image && (
@@ -238,9 +258,9 @@ export default function Sell({ user, setCurrentPage }) {
                   {form.image && !errors.image && (
                     <div className="mt-3">
                       <p className="text-sm text-gray-600 mb-2">Image Preview:</p>
-                      <img 
-                        src={form.image} 
-                        alt="Preview" 
+                      <img
+                        src={form.image}
+                        alt="Preview"
                         className="w-32 h-32 object-cover rounded-lg border"
                         onError={(e) => {
                           e.target.style.display = 'none';
@@ -257,8 +277,8 @@ export default function Sell({ user, setCurrentPage }) {
                   </div>
                 )}
 
-                <button 
-                  onClick={submit} 
+                <button
+                  onClick={submit}
                   disabled={isSubmitting}
                   className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-gray-400 disabled:to-gray-500 text-white py-4 rounded-lg font-medium transition-all duration-200 flex items-center justify-center"
                 >
@@ -310,8 +330,8 @@ export default function Sell({ user, setCurrentPage }) {
                   {userProducts.map((product) => (
                     <div key={product.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
                       <div className="flex items-center">
-                        <img 
-                          src={product.image} 
+                        <img
+                          src={product.image}
                           alt={product.name}
                           className="w-16 h-16 object-cover rounded-lg mr-4"
                           onError={(e) => {
@@ -326,7 +346,7 @@ export default function Sell({ user, setCurrentPage }) {
                             Added on {new Date(product.created_at).toLocaleDateString()}
                           </p>
                         </div>
-                        <button 
+                        <button
                           onClick={() => deleteProduct(product.id)}
                           className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-full transition-colors"
                           title="Delete product"

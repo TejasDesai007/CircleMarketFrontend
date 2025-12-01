@@ -200,10 +200,7 @@ export default function Home() {
 
                 {/* Additional Details */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-sm text-gray-500">Product ID</p>
-                    <p className="font-medium">#{selectedProduct.id}</p>
-                  </div>
+                  
                   {selectedProduct.category && (
                     <div className="bg-gray-50 rounded-lg p-3">
                       <p className="text-sm text-gray-500">Category</p>
