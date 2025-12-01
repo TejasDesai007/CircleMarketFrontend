@@ -11,7 +11,8 @@ export default function Home() {
   const [viewMode, setViewMode] = useState("grid"); // 'grid' or 'list'
   const [sortBy, setSortBy] = useState("newest"); // 'newest', 'price-low', 'price-high'
   const [showFilters, setShowFilters] = useState(false);
-  const [priceRange, setPriceRange] = useState([0, 1000]);
+  const [priceRange, setPriceRange] = useState([0, 10000]);
+
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -25,7 +26,7 @@ export default function Home() {
         setIsLoading(false);
       }
     };
-    
+
     fetchProducts();
   }, []);
 
@@ -34,21 +35,23 @@ export default function Home() {
       p.name.toLowerCase().includes(search.toLowerCase())
     );
 
-    // Apply price range filter
-    filtered = filtered.filter(p => 
+    // PRICE FILTER
+    filtered = filtered.filter(p =>
       p.price >= priceRange[0] && p.price <= priceRange[1]
     );
 
-    // Apply sorting
+    // SORT FIXED
     filtered.sort((a, b) => {
       switch (sortBy) {
         case "price-low":
           return a.price - b.price;
+
         case "price-high":
           return b.price - a.price;
+
         case "newest":
         default:
-          return new Date(b.created_at) - new Date(a.created_at);
+          return b.id - a.id;  // FIXED: no created_at needed
       }
     });
 
@@ -126,21 +129,19 @@ export default function Home() {
               <div className="flex bg-gray-100 rounded-lg p-1">
                 <button
                   onClick={() => setViewMode("grid")}
-                  className={`p-2 rounded-md transition-all ${
-                    viewMode === "grid"
+                  className={`p-2 rounded-md transition-all ${viewMode === "grid"
                       ? "bg-white shadow-sm text-blue-600"
                       : "text-gray-500 hover:text-gray-700"
-                  }`}
+                    }`}
                 >
                   <Grid3X3 size={18} />
                 </button>
                 <button
                   onClick={() => setViewMode("list")}
-                  className={`p-2 rounded-md transition-all ${
-                    viewMode === "list"
+                  className={`p-2 rounded-md transition-all ${viewMode === "list"
                       ? "bg-white shadow-sm text-blue-600"
                       : "text-gray-500 hover:text-gray-700"
-                  }`}
+                    }`}
                 >
                   <List size={18} />
                 </button>
@@ -149,11 +150,10 @@ export default function Home() {
               {/* Filter Toggle */}
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg border transition-all ${
-                  showFilters
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg border transition-all ${showFilters
                     ? "bg-blue-50 border-blue-200 text-blue-600"
                     : "bg-white border-gray-300 text-gray-700 hover:border-gray-400"
-                }`}
+                  }`}
               >
                 <SlidersHorizontal size={18} />
                 <span className="hidden sm:inline">Filters</span>
@@ -222,7 +222,7 @@ export default function Home() {
               "Loading products..."
             ) : (
               <>
-                Showing <span className="font-semibold">{filteredProducts.length}</span> 
+                Showing <span className="font-semibold">{filteredProducts.length}</span>
                 {filteredProducts.length === 1 ? " product" : " products"}
                 {search && (
                   <> for "<span className="font-semibold">{search}</span>"</>
@@ -239,14 +239,14 @@ export default function Home() {
           <EmptyState />
         ) : (
           <div className={
-            viewMode === "grid" 
+            viewMode === "grid"
               ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6"
               : "space-y-4"
           }>
             {filteredProducts.map((product) => (
-              <ProductCard 
-                key={product.id} 
-                product={product} 
+              <ProductCard
+                key={product.id}
+                product={product}
                 viewMode={viewMode}
               />
             ))}
