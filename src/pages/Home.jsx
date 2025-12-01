@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Filter, Grid3X3, List, SlidersHorizontal, Sparkles } from "lucide-react";
+import { Search, Filter, Grid3X3, List, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import API from "../api/api";
 import ProductCard from "../components/ProductCard";
 
@@ -12,7 +12,8 @@ export default function Home() {
   const [sortBy, setSortBy] = useState("newest"); // 'newest', 'price-low', 'price-high'
   const [showFilters, setShowFilters] = useState(false);
   const [priceRange, setPriceRange] = useState([0, 10000]);
-
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [showProductDetail, setShowProductDetail] = useState(false);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -58,6 +59,37 @@ export default function Home() {
     setFilteredProducts(filtered);
   }, [products, search, sortBy, priceRange]);
 
+  const handleProductClick = (product) => {
+    setSelectedProduct(product);
+    setShowProductDetail(true);
+    // Prevent body scrolling when modal is open
+    document.body.style.overflow = 'hidden';
+  };
+
+  const closeProductDetail = () => {
+    setShowProductDetail(false);
+    setSelectedProduct(null);
+    // Re-enable body scrolling
+    document.body.style.overflow = 'auto';
+  };
+
+  // Close modal when pressing Escape key
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        closeProductDetail();
+      }
+    };
+
+    if (showProductDetail) {
+      window.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [showProductDetail]);
+
   const LoadingSkeleton = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
       {[...Array(8)].map((_, index) => (
@@ -87,6 +119,124 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-8 px-4 sm:px-6">
+      {/* Product Detail Panel/Modal */}
+      {showProductDetail && selectedProduct && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity"
+            onClick={closeProductDetail}
+          />
+          
+          {/* Product Detail Panel */}
+          <div className="fixed inset-y-0 right-0 w-full md:w-1/2 lg:w-2/5 xl:w-1/3 bg-white z-50 shadow-2xl overflow-y-auto animate-slideIn">
+            <div className="sticky top-0 bg-white border-b border-gray-200 z-10">
+              <div className="flex items-center justify-between p-4">
+                <h2 className="text-xl font-bold text-gray-900">Product Details</h2>
+                <button
+                  onClick={closeProductDetail}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  aria-label="Close"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              {/* Product Image */}
+              <div className="mb-6">
+                <img
+                  src={selectedProduct.image}
+                  alt={selectedProduct.name}
+                  className="w-full h-64 md:h-80 object-cover rounded-2xl"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = "https://via.placeholder.com/400x300?text=No+Image";
+                  }}
+                />
+              </div>
+
+              {/* Product Info */}
+              <div className="space-y-6">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                    {selectedProduct.name}
+                  </h1>
+                  <p className="text-3xl font-bold text-green-600">
+                    ${parseFloat(selectedProduct.price).toFixed(2)}
+                  </p>
+                </div>
+
+                {/* Seller Info */}
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">Sold by</h3>
+                  <div className="flex items-center">
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                      <span className="font-semibold text-blue-600">
+                        {selectedProduct.seller_name?.charAt(0) || "U"}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {selectedProduct.seller_name || "Unknown Seller"}
+                      </p>
+                      {selectedProduct.seller_phone && (
+                        <p className="text-sm text-gray-500">
+                          📞 {selectedProduct.seller_phone}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Description Section */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Description</h3>
+                  <p className="text-gray-600">
+                    {selectedProduct.description || "No description available for this product."}
+                  </p>
+                </div>
+
+                {/* Additional Details */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <p className="text-sm text-gray-500">Product ID</p>
+                    <p className="font-medium">#{selectedProduct.id}</p>
+                  </div>
+                  {selectedProduct.category && (
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <p className="text-sm text-gray-500">Category</p>
+                      <p className="font-medium">{selectedProduct.category}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="space-y-3 pt-6 border-t border-gray-200">
+                  <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition-colors">
+                    Contact Seller
+                  </button>
+                  <button className="w-full border-2 border-blue-600 text-blue-600 hover:bg-blue-50 py-3 rounded-lg font-medium transition-colors">
+                    Save for Later
+                  </button>
+                </div>
+
+                {/* Close Button for Mobile */}
+                <div className="pt-4">
+                  <button
+                    onClick={closeProductDetail}
+                    className="w-full text-gray-500 hover:text-gray-700 py-2 font-medium"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       <div className="max-w-7xl mx-auto">
         {/* Header Section */}
         <div className="text-center mb-10">
@@ -244,15 +394,36 @@ export default function Home() {
               : "space-y-4"
           }>
             {filteredProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                viewMode={viewMode}
-              />
+              <div 
+                key={product.id} 
+                onClick={() => handleProductClick(product)}
+                className="cursor-pointer"
+              >
+                <ProductCard
+                  product={product}
+                  viewMode={viewMode}
+                />
+              </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Add CSS for animation */}
+      <style jsx>{`
+        @keyframes slideIn {
+          from {
+            transform: translateX(100%);
+          }
+          to {
+            transform: translateX(0);
+          }
+        }
+        
+        .animate-slideIn {
+          animation: slideIn 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
-} 
+}
