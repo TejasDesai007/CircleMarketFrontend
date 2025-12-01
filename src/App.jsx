@@ -8,6 +8,13 @@ import Sell from "./pages/Sell";
 export default function App() {
   const [currentPage, setCurrentPage] = useState("home");
   const [user, setUser] = useState(null);
+  useEffect(() => {
+    const savedUser = localStorage.getItem("user");
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
+  }, []);
+
 
   return (
     <div className="min-h-screen bg-gray-50">
